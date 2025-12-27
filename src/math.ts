@@ -2,10 +2,6 @@ export type Vec2 = { x: number; y: number }
 export type Vec3 = { x: number; y: number; z: number }
 export type Vec4 = { x: number; y: number; z: number; w: number }
 
-/**
- * Matrix index constants for column-major 4x4 matrices
- * Access pattern: m[COL + ROW * 4]
- */
 const M00 = 0,
   M10 = 1,
   M20 = 2,

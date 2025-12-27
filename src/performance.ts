@@ -32,13 +32,22 @@ export const createPerformanceMonitor = (
     }
   }
 
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'p' || e.key === 'P') {
+      toggle()
+    }
+  }
+
   const destroy = () => {
     if (overlayElement && container) {
       container.removeChild(overlayElement)
       overlayElement = null
       fpsElement = null
     }
+    document.removeEventListener('keydown', handleKeydown)
   }
+
+  document.addEventListener('keydown', handleKeydown)
 
   return { recordFrame, toggle, destroy }
 }

@@ -3,7 +3,7 @@ import { multiply, translationMatrix, rotateXYZ, Vec3, scale } from '../math'
 import { cubeTriangles } from './cube'
 import { parseObjModelFile } from './obj'
 
-export type Shape = {
+export type Model = {
   type: 'cube' | 'teapot'
   triangles: Vec3[][]
   matrix: Float32Array
@@ -14,7 +14,7 @@ const createShape = (
   triangles: Vec3[][],
   position: Vec3,
   initialRotation: Vec3 = { x: 0, y: 0, z: 0 }
-): Shape => {
+): Model => {
   return {
     type,
     triangles,
@@ -27,7 +27,7 @@ const loadTeapot = () =>
     .then((res) => res.text())
     .then(parseObjModelFile)
 
-export const getShapes = async (): Promise<Shape[]> => {
+export const getModels = async (): Promise<Model[]> => {
   const teapotFaces = await loadTeapot()
 
   return [

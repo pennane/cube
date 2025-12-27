@@ -14,20 +14,21 @@ import {
   perspectiveDivide,
   project
 } from './math'
-import { getShapes, Shape } from './shapes/shapes'
+import { getModels, Model } from './models/models'
 import { createPerformanceMonitor } from './performance'
 
 const CANVAS_SIZE = 500
 const CAMERA_DISTANCE = 10
-const FOCAL_LENGTH = 2
+const FOCAL_LENGTH = 3
+const WORLD_SIZE: Vec2 = { x: CANVAS_SIZE, y: CANVAS_SIZE }
 
 const app = document.getElementById('app')!
+const perfMonitor = createPerformanceMonitor(app, { enabled: false })
 const canvas = document.createElement('canvas')
 const ctx = canvas.getContext('2d')!
-const worldSize: Vec2 = { x: CANVAS_SIZE, y: CANVAS_SIZE }
 
-canvas.width = worldSize.x
-canvas.height = worldSize.y
+canvas.width = WORLD_SIZE.x
+canvas.height = WORLD_SIZE.y
 app.appendChild(canvas)
 
 let camera: Float32Array = translationMatrix({
@@ -36,9 +37,9 @@ let camera: Float32Array = translationMatrix({
   z: -CAMERA_DISTANCE
 })
 
-let shapes: Shape[] = []
+let shapes: Model[] = []
 
-const toWorldSpace = (shapes: Shape[]): Vec3[][] =>
+const toWorldSpace = (shapes: Model[]): Vec3[][] =>
   shapes.flatMap((shape) =>
     shape.triangles.map((triangle) =>
       triangle.map((vertex) => transformVec3(shape.matrix, vertex))
@@ -110,45 +111,32 @@ const updateCamera = (deltaMs: number) => {
   camera = multiply(rotateY(angle), camera)
 }
 
-// Initialize performance monitor
-const perfMonitor = createPerformanceMonitor(document.body, { enabled: false })
-
 const frame = (deltaMs: number) => {
-  const frameStart = performance.now()
-
   updateAnimations(deltaMs)
   updateCamera(deltaMs)
 
-  const worldTriangles = toWorldSpace(shapes)
-  const cameraTriangles = toCameraSpace(worldTriangles, camera)
-  const screenTriangles = toScreenSpace(
-    cameraTriangles,
-    worldSize,
-    FOCAL_LENGTH
-  )
-  render(screenTriangles)
-
-  const frameEnd = performance.now()
-  perfMonitor.recordFrame(frameEnd - frameStart)
+  const worldSpace = toWorldSpace(shapes)
+  const cameraSpace = toCameraSpace(worldSpace, camera)
+  const screenSpace = toScreenSpace(cameraSpace, WORLD_SIZE, FOCAL_LENGTH)
+  render(screenSpace)
 }
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'p' || e.key === 'P') {
-    perfMonitor.toggle()
-  }
-})
 
 let lastTime: number | null = null
 const loop = (time: number) => {
   if (lastTime === null) lastTime = time
+
   const deltaMs = time - lastTime
   lastTime = time
+
+  const frameStart = performance.now()
   frame(deltaMs)
+  const frameEnd = performance.now()
+  perfMonitor.recordFrame(frameEnd - frameStart)
+
   requestAnimationFrame(loop)
 }
 
-// Initialize shapes and start animation loop
-getShapes().then((loadedShapes) => {
+getModels().then((loadedShapes) => {
   shapes = loadedShapes
   requestAnimationFrame(loop)
 })
