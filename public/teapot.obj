@@ -1,4 +1,4 @@
-const obj = `v -3.000000 1.800000 0.000000
+v -3.000000 1.800000 0.000000
 v -2.991600 1.800000 -0.081000
 v -2.991600 1.800000 0.081000
 v -2.989450 1.666162 0.000000
@@ -9962,21 +9962,4 @@ f 2880 2886 2970
 f 3004 3001 2968
 f 2968 2970 3004
 f 3022 3021 3001
-f 3001 3004 3022`
-
-const lines = obj.split('\n').map((l) => l.trim())
-
-const vertices = lines
-  .filter((l) => l.startsWith('v '))
-  .map((l) => l.split(' ').slice(1).map(Number))
-  .map(([x, y, z]) => ({ x, y, z }))
-
-export const teapotFaces = lines
-  .filter((l) => l.startsWith('f '))
-  .map((l) =>
-    l
-      .split(' ')
-      .slice(1)
-      .map((c) => parseInt(c, 10) - 1)
-  )
-  .map(([a, b, c]) => [vertices[a], vertices[b], vertices[c]])
+f 3001 3004 3022

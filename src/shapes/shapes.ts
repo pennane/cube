@@ -1,47 +1,45 @@
-import { Vec3, Vec4, scale } from '../vec'
-import { cubeTriangles } from './cube'
-import { teapotFaces } from './teapot'
+import { multiply, translationMatrix, rotateXYZ, Vec3, scale } from '../math'
 
-type Shape = {
+import { cubeTriangles } from './cube'
+import { parseObjModelFile } from './obj'
+
+export type Shape = {
   type: 'cube' | 'teapot'
-  triangles: Vec4[][]
-  position: Vec3
-  rotation: Vec3
+  triangles: Vec3[][]
+  matrix: Float32Array
 }
 
-const shapes = [
-  {
-    type: 'cube',
-    triangles: cubeTriangles,
-    position: { x: -2.5, y: 0, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
-  },
-  {
-    type: 'cube',
-    triangles: cubeTriangles,
-    position: { x: 2.5, y: 0, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
-  },
-  {
-    type: 'cube',
-    triangles: cubeTriangles,
-    position: { x: 0, y: 2.5, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
-  },
-  {
-    type: 'cube',
-    triangles: cubeTriangles,
-    position: { x: 0, y: -2.5, z: 0 },
-    rotation: { x: 0, y: 0, z: 0 }
-  },
-  {
-    type: 'teapot',
-    triangles: teapotFaces.map((vs) =>
-      vs.map(scale(0.5)).map((v) => ({ ...v, w: 1 }))
-    ),
-    position: { x: 0, y: -0.5, z: 0 },
-    rotation: { x: Math.PI, y: 0, z: 0 }
+const createShape = (
+  type: 'cube' | 'teapot',
+  triangles: Vec3[][],
+  position: Vec3,
+  initialRotation: Vec3 = { x: 0, y: 0, z: 0 }
+): Shape => {
+  return {
+    type,
+    triangles,
+    matrix: multiply(translationMatrix(position), rotateXYZ(initialRotation))
   }
-] satisfies Shape[]
+}
 
-export const getShapes = () => shapes
+const loadTeapot = () =>
+  fetch('/teapot.obj')
+    .then((res) => res.text())
+    .then(parseObjModelFile)
+
+export const getShapes = async (): Promise<Shape[]> => {
+  const teapotFaces = await loadTeapot()
+
+  return [
+    createShape('cube', cubeTriangles, { x: -2.5, y: 0, z: 0 }),
+    createShape('cube', cubeTriangles, { x: 2.5, y: 0, z: 0 }),
+    createShape('cube', cubeTriangles, { x: 0, y: 2.5, z: 0 }),
+    createShape('cube', cubeTriangles, { x: 0, y: -2.5, z: 0 }),
+    createShape(
+      'teapot',
+      teapotFaces.map((vs) => vs.map(scale(0.5))),
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 }
+    )
+  ]
+}

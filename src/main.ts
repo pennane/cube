@@ -1,121 +1,139 @@
+import { shape } from './canvas'
 import './main.css'
 import {
-  getPosition,
   multiply,
-  multiplyN,
   rotateXYZ,
   rotateY,
   toVec4,
-  transformPoint,
-  transformPointInto,
-  translationMatrix
-} from './matrix'
-import { getShapes } from './shapes/shapes'
-import { facesPoint, length, sub, Vec2, Vec3 } from './vec'
+  transformVec4,
+  transformVec3,
+  translationMatrix,
+  facesPoint,
+  Vec2,
+  Vec3,
+  perspectiveDivide,
+  project
+} from './math'
+import { getShapes, Shape } from './shapes/shapes'
+
+const CANVAS_SIZE = 500
+const CAMERA_DISTANCE = 10
+const FOCAL_LENGTH = 2
+
 const app = document.getElementById('app')!
 const canvas = document.createElement('canvas')
 const ctx = canvas.getContext('2d')!
-const CANVAS_SIZE = 500
+const worldSize: Vec2 = { x: CANVAS_SIZE, y: CANVAS_SIZE }
 
-canvas.width = CANVAS_SIZE
-canvas.height = CANVAS_SIZE
+canvas.width = worldSize.x
+canvas.height = worldSize.y
 app.appendChild(canvas)
 
-const shape = (ps: Vec2[]) => {
-  ctx.beginPath()
-  ctx.moveTo(ps[0].x, ps[0].y)
-  for (let i = 0; i < ps.length; i++) {
-    const p = ps[(i + 1) % ps.length]
-    ctx.lineTo(p.x, p.y)
-  }
-  ctx.closePath()
-  ctx.fillStyle = 'rgba(255, 255, 0, 1)'
-  ctx.fill()
+let camera: Float32Array = translationMatrix({
+  x: 0,
+  y: 0,
+  z: -CAMERA_DISTANCE
+})
 
-  ctx.strokeStyle = 'red'
-  ctx.stroke()
+let shapes: Shape[] = []
+
+const toWorldSpace = (shapes: Shape[]): Vec3[][] =>
+  shapes.flatMap((shape) =>
+    shape.triangles.map((triangle) =>
+      triangle.map((vertex) => transformVec3(shape.matrix, vertex))
+    )
+  )
+
+const toCameraSpace = (triangles: Vec3[][], camera: Float32Array): Vec3[][] =>
+  triangles.map((vertices) =>
+    vertices.map((vertex) =>
+      perspectiveDivide(transformVec4(camera, toVec4(vertex)))
+    )
+  )
+
+const cullBackfaces = (triangles: Vec3[][]): Vec3[][] => {
+  // In camera space, camera is at origin
+  const facesCamera = facesPoint({ x: 0, y: 0, z: 0 })
+  return triangles.filter((triangle) => facesCamera(triangle))
 }
 
-let camera: Float32Array = translationMatrix({ x: 0, y: 0, z: -10 })
+const sortByDepth = (triangles: Vec3[][]): Vec3[][] => {
+  return triangles.toSorted((a, b) => {
+    const avgZA = (a[0].z + a[1].z + a[2].z) / 3
+    const avgZB = (b[0].z + b[1].z + b[2].z) / 3
+    return avgZB - avgZA
+  })
+}
 
-const worldToScreen = (point: Vec3, camera: Float32Array) => {
-  let { x, y, z, w } = transformPoint(camera, toVec4(point))
+const projectToScreen = (
+  triangles: Vec3[][],
+  worldSize: Vec2,
+  focalLength: number
+): Vec2[][] =>
+  triangles.map((triangle) =>
+    triangle.map((vertex) => project(worldSize, vertex, focalLength))
+  )
 
-  x /= w
-  y /= w
-  z /= w
+const toScreenSpace = (
+  cameraSpace: Vec3[][],
+  worldSize: Vec2,
+  focalLength: number
+): Vec2[][] => {
+  const visible = cullBackfaces(cameraSpace)
+  const sorted = sortByDepth(visible)
+  return projectToScreen(sorted, worldSize, focalLength)
+}
 
-  const f = 2 / z
-  return {
-    x: ((x * f + 1) * CANVAS_SIZE) / 2,
-    y: ((1 - y * f) * CANVAS_SIZE) / 2
+const render = (triangles: Vec2[][]) => {
+  ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+  for (const triangle of triangles) {
+    shape(ctx, triangle)
   }
+}
+
+const updateAnimations = (deltaMs: number) => {
+  const angle = deltaMs / 1000
+  const cubeRotation = rotateXYZ({ x: angle, y: angle, z: 0 })
+  const teapotRotation = rotateXYZ({ x: -angle, y: angle, z: angle })
+
+  shapes.forEach((s) => {
+    s.matrix = multiply(
+      s.type === 'cube' ? cubeRotation : teapotRotation,
+      s.matrix
+    )
+  })
+}
+
+const updateCamera = (deltaMs: number) => {
+  const angle = deltaMs / 1000
+  camera = multiply(rotateY(angle), camera)
+}
+
+const frame = (deltaMs: number) => {
+  updateAnimations(deltaMs)
+  updateCamera(deltaMs)
+
+  const worldTriangles = toWorldSpace(shapes)
+  const cameraTriangles = toCameraSpace(worldTriangles, camera)
+  const screenTriangles = toScreenSpace(
+    cameraTriangles,
+    worldSize,
+    FOCAL_LENGTH
+  )
+  render(screenTriangles)
 }
 
 let lastTime: number | null = null
-
-const shapes = getShapes()
-const modelMatrices: Float32Array[] = shapes.map((shape) =>
-  multiplyN(rotateXYZ(shape.rotation), translationMatrix(shape.position))
-)
-
-const transformedTriangles = shapes.flatMap((shape, shapeIndex) =>
-  shape.triangles.map((tri, triIndex) => ({
-    shapeIndex,
-    triIndex,
-    vertices: [{ ...tri[0] }, { ...tri[1] }, { ...tri[2] }]
-  }))
-)
-
-const draw = (deltaMs: number) => {
-  const angle = deltaMs / 1000
-
-  ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
-
-  shapes.forEach((s, i) => {
-    if (s.type === 'cube') {
-      modelMatrices[i] = multiply(
-        rotateXYZ({ x: angle, y: angle, z: 0 }),
-        modelMatrices[i]
-      )
-    } else if (s.type === 'teapot') {
-      modelMatrices[i] = multiply(
-        rotateXYZ({ x: -angle, y: angle, z: angle }),
-        modelMatrices[i]
-      )
-    }
-  })
-
-  const camPos = getPosition(camera)
-  camera = multiply(rotateY(angle), camera)
-
-  transformedTriangles.forEach((t) => {
-    const m = modelMatrices[t.shapeIndex]
-    const orig = shapes[t.shapeIndex].triangles[t.triIndex]
-    for (let i = 0; i < 3; i++) {
-      transformPointInto(orig[i], m, t.vertices[i])
-    }
-  })
-
-  transformedTriangles.sort((a, b) => {
-    const da = length(sub(camPos, a.vertices[0]))
-    const db = length(sub(camPos, b.vertices[0]))
-    return db - da // far to near
-  })
-
-  transformedTriangles.forEach((t) => {
-    if (facesPoint(camPos)(t.vertices)) {
-      shape(t.vertices.map((v) => worldToScreen(v, camera)))
-    }
-  })
-}
-
 const loop = (time: number) => {
   if (lastTime === null) lastTime = time
   const deltaMs = time - lastTime
   lastTime = time
-  draw(deltaMs)
+  frame(deltaMs)
   requestAnimationFrame(loop)
 }
 
-requestAnimationFrame(loop)
+// Initialize shapes and start animation loop
+getShapes().then((loadedShapes) => {
+  shapes = loadedShapes
+  requestAnimationFrame(loop)
+})
