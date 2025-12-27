@@ -15,6 +15,7 @@ import {
   project
 } from './math'
 import { getShapes, Shape } from './shapes/shapes'
+import { createPerformanceMonitor } from './performance'
 
 const CANVAS_SIZE = 500
 const CAMERA_DISTANCE = 10
@@ -61,7 +62,7 @@ const sortByDepth = (triangles: Vec3[][]): Vec3[][] => {
   return triangles.toSorted((a, b) => {
     const avgZA = (a[0].z + a[1].z + a[2].z) / 3
     const avgZB = (b[0].z + b[1].z + b[2].z) / 3
-    return avgZB - avgZA
+    return avgZA - avgZB
   })
 }
 
@@ -109,7 +110,12 @@ const updateCamera = (deltaMs: number) => {
   camera = multiply(rotateY(angle), camera)
 }
 
+// Initialize performance monitor
+const perfMonitor = createPerformanceMonitor(document.body, { enabled: false })
+
 const frame = (deltaMs: number) => {
+  const frameStart = performance.now()
+
   updateAnimations(deltaMs)
   updateCamera(deltaMs)
 
@@ -121,7 +127,16 @@ const frame = (deltaMs: number) => {
     FOCAL_LENGTH
   )
   render(screenTriangles)
+
+  const frameEnd = performance.now()
+  perfMonitor.recordFrame(frameEnd - frameStart)
 }
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'p' || e.key === 'P') {
+    perfMonitor.toggle()
+  }
+})
 
 let lastTime: number | null = null
 const loop = (time: number) => {

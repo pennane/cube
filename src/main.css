@@ -9,3 +9,27 @@ body {
 canvas {
   padding: 1rem;
 }
+
+.performance-monitor {
+  position: fixed;
+  padding: 0.5rem;
+  top: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.7);
+  font-family: monospace;
+  z-index: 999;
+  pointer-events: none;
+  user-select: none;
+}
+
+.performance-monitor[data-status='good'] {
+  color: #0f0;
+}
+
+.performance-monitor[data-status='medium'] {
+  color: #ff0;
+}
+
+.performance-monitor[data-status='bad'] {
+  color: #f00;
+}
