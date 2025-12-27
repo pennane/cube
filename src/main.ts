@@ -1,19 +1,17 @@
-import { cubeTriangles } from './cube'
 import './main.css'
-import { teapotFaces } from './teapot'
 import {
-  add,
-  cross,
-  dot,
-  length,
-  normalize,
-  PointS,
-  PointW,
-  rotateX,
+  getPosition,
+  multiply,
+  multiplyN,
+  rotateXYZ,
   rotateY,
-  scale,
-  sub
-} from './vec'
+  toVec4,
+  transformPoint,
+  transformPointInto,
+  translationMatrix
+} from './matrix'
+import { getShapes } from './shapes/shapes'
+import { facesPoint, length, sub, Vec2, Vec3 } from './vec'
 const app = document.getElementById('app')!
 const canvas = document.createElement('canvas')
 const ctx = canvas.getContext('2d')!
@@ -23,7 +21,7 @@ canvas.width = CANVAS_SIZE
 canvas.height = CANVAS_SIZE
 app.appendChild(canvas)
 
-const shape = (ps: PointS[]) => {
+const shape = (ps: Vec2[]) => {
   ctx.beginPath()
   ctx.moveTo(ps[0].x, ps[0].y)
   for (let i = 0; i < ps.length; i++) {
@@ -38,108 +36,86 @@ const shape = (ps: PointS[]) => {
   ctx.stroke()
 }
 
-let camera = { x: 0, y: 0, z: -10 }
-let cameraRotation = { x: 0, y: 0, z: 0 }
+let camera: Float32Array = translationMatrix({ x: 0, y: 0, z: -10 })
 
-const worldToScreen = (point: PointW) => {
-  let p = {
-    x: point.x - camera.x,
-    y: point.y - camera.y,
-    z: point.z - camera.z
-  }
+const worldToScreen = (point: Vec3, camera: Float32Array) => {
+  let { x, y, z, w } = transformPoint(camera, toVec4(point))
 
-  p = rotateY(-cameraRotation.y)(p)
-  p = rotateX(-cameraRotation.x)(p)
+  x /= w
+  y /= w
+  z /= w
 
-  const f = 2 / p.z
+  const f = 2 / z
   return {
-    x: ((p.x * f + 1) * CANVAS_SIZE) / 2,
-    y: ((1 - p.y * f) * CANVAS_SIZE) / 2
+    x: ((x * f + 1) * CANVAS_SIZE) / 2,
+    y: ((1 - y * f) * CANVAS_SIZE) / 2
   }
 }
 
-const facesCamera = (shape: PointW[]): boolean => {
-  const [a, b, c] = shape
-
-  const ab = sub(b, a)
-  const ac = sub(c, a)
-  const normal = cross(ab, ac)
-
-  const viewDir = sub(a, camera)
-
-  return dot(normal, viewDir) < 0
-}
-
-const cubes = [
-  {
-    shape: cubeTriangles,
-    position: { x: -2.5, y: 0, z: 0 }
-  },
-  {
-    shape: cubeTriangles,
-    position: { x: 2.5, y: 0, z: 0 }
-  },
-  {
-    shape: cubeTriangles,
-    position: { x: 0, y: 2.5, z: 0 }
-  },
-  {
-    shape: cubeTriangles,
-    position: { x: 0, y: -2.5, z: 0 }
-  }
-]
-const teapots = [
-  {
-    shape: teapotFaces.map((vs) => vs.map(scale(0.5))),
-    position: { x: 0, y: -0.5, z: 0 }
-  }
-]
-
-let angle = 0
 let lastTime: number | null = null
 
-const draw = (time: number) => {
-  if (lastTime === null) lastTime = time
+const shapes = getShapes()
+const modelMatrices: Float32Array[] = shapes.map((shape) =>
+  multiplyN(rotateXYZ(shape.rotation), translationMatrix(shape.position))
+)
 
-  const deltaTime = time - lastTime
+const transformedTriangles = shapes.flatMap((shape, shapeIndex) =>
+  shape.triangles.map((tri, triIndex) => ({
+    shapeIndex,
+    triIndex,
+    vertices: [{ ...tri[0] }, { ...tri[1] }, { ...tri[2] }]
+  }))
+)
 
-  lastTime = time
-  angle = (angle + deltaTime / 1000) % (Math.PI * 2)
+const draw = (deltaMs: number) => {
+  const angle = deltaMs / 1000
 
   ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
-  camera = rotateY(0.01)(camera)
 
-  const toOrigin = normalize({
-    x: -camera.x,
-    y: -camera.y,
-    z: -camera.z
+  shapes.forEach((s, i) => {
+    if (s.type === 'cube') {
+      modelMatrices[i] = multiply(
+        rotateXYZ({ x: angle, y: angle, z: 0 }),
+        modelMatrices[i]
+      )
+    } else if (s.type === 'teapot') {
+      modelMatrices[i] = multiply(
+        rotateXYZ({ x: -angle, y: angle, z: angle }),
+        modelMatrices[i]
+      )
+    }
   })
 
-  cameraRotation.y = Math.atan2(toOrigin.x, toOrigin.z)
-  cameraRotation.x = Math.asin(toOrigin.y)
-  cameraRotation.z = 0
+  const camPos = getPosition(camera)
+  camera = multiply(rotateY(angle), camera)
 
-  const screenCubes = cubes.map((sh, i) =>
-    sh.shape
-      .map((s) => {
-        return s
-          .map(rotateX(angle + i))
-          .map(rotateY(angle + i))
-          .map((p) => add(sh.position, p))
-      })
-      .filter(facesCamera)
-  )
-  const screenTeapots = teapots.map((tp) =>
-    tp.shape
-      .map((s) => s.map((y) => add(tp.position, y)).map(rotateX(angle)))
-      .filter(facesCamera)
-  )
-  ;[...screenCubes, ...screenTeapots]
-    .flat()
-    .toSorted((a, b) => length(sub(camera, b[0])) - length(sub(camera, a[0])))
-    .map((x) => shape(x.map(worldToScreen)))
+  transformedTriangles.forEach((t) => {
+    const m = modelMatrices[t.shapeIndex]
+    const orig = shapes[t.shapeIndex].triangles[t.triIndex]
+    for (let i = 0; i < 3; i++) {
+      transformPointInto(orig[i], m, t.vertices[i])
+    }
+  })
 
-  requestAnimationFrame(draw)
+  transformedTriangles.sort((a, b) => {
+    const da = length(sub(camPos, a.vertices[0]))
+    const db = length(sub(camPos, b.vertices[0]))
+    return db - da // far to near
+  })
+
+  transformedTriangles.forEach((t) => {
+    if (facesPoint(camPos)(t.vertices)) {
+      shape(t.vertices.map((v) => worldToScreen(v, camera)))
+    }
+  })
 }
 
-requestAnimationFrame(draw)
+const loop = (time: number) => {
+  if (lastTime === null) lastTime = time
+  const deltaMs = time - lastTime
+  lastTime = time
+  draw(deltaMs)
+  requestAnimationFrame(loop)
+}
+
+requestAnimationFrame(loop)

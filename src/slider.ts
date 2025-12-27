@@ -1,4 +1,4 @@
-import { PointW } from './vec'
+import { Vec3 } from './vec'
 
 // Create a container for camera controls
 const controls = document.createElement('div')
@@ -47,7 +47,7 @@ function createSlider(
   controls.appendChild(container)
 }
 
-export const createSliders = (camera: PointW, cameraRotation: PointW) => {
+export const createSliders = (camera: Vec3, cameraRotation: Vec3) => {
   // Camera position sliders
   createSlider('Cam X', -5, 5, 0.01, camera.x, (v) => (camera.x = v))
   createSlider('Cam Y', -5, 5, 0.01, camera.y, (v) => (camera.y = v))

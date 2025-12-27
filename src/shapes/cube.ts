@@ -1,6 +1,6 @@
-import { PointW } from './vec'
+import { Vec4 } from '../vec'
 
-const cubeVertices: PointW[] = [
+const cubeVertices: Vec4[] = [
   { x: -0.25, y: -0.25, z: -0.25 }, // 0
   { x: 0.25, y: -0.25, z: -0.25 }, // 1
   { x: 0.25, y: 0.25, z: -0.25 }, // 2
@@ -9,7 +9,7 @@ const cubeVertices: PointW[] = [
   { x: 0.25, y: -0.25, z: 0.25 }, // 5
   { x: 0.25, y: 0.25, z: 0.25 }, // 6
   { x: -0.25, y: 0.25, z: 0.25 } // 7
-]
+].map((v) => ({ ...v, w: 1 }))
 
 const cubeFaces = [
   // +Z
@@ -26,7 +26,7 @@ const cubeFaces = [
   [0, 4, 7, 3]
 ]
 
-export const cubeTriangles: PointW[][] = cubeFaces.flatMap(([a, b, c, d]) => [
+export const cubeTriangles: Vec4[][] = cubeFaces.flatMap(([a, b, c, d]) => [
   [cubeVertices[a], cubeVertices[b], cubeVertices[c]],
   [cubeVertices[a], cubeVertices[c], cubeVertices[d]]
 ])
