@@ -60,10 +60,15 @@ const cullBackfaces = (ctx: Context): number => {
     const nx = uy * vz - uz * vy
     const ny = uz * vx - ux * vz
     const nz = ux * vy - uy * vx
-    const dot = nx * 0 + ny * 0 + nz * -1
 
-    if (dot < 0) {
-      // facing camera
+    const ax = cameraBuffer[ia]
+    const ay = cameraBuffer[ia + 1]
+    const az = cameraBuffer[ia + 2]
+
+    // dot(n, -a)
+    const facing = -(nx * ax + ny * ay + nz * az)
+
+    if (facing > 0) {
       out[count++] = indices[i]
       out[count++] = indices[i + 1]
       out[count++] = indices[i + 2]
@@ -161,7 +166,7 @@ const render = (ctx: Context, visibleCount: number, indices: Uint16Array) => {
     ctx.renderingContext.lineTo(screen[i1], screen[i1 + 1])
     ctx.renderingContext.lineTo(screen[i2], screen[i2 + 1])
     ctx.renderingContext.closePath()
-    // ctx.renderingContext.fill()
+    ctx.renderingContext.fill()
     ctx.renderingContext.stroke()
   }
 }
@@ -226,7 +231,7 @@ export const nextFrame = (ctx: Context, deltaMs: number) => {
   updateCamera(ctx, deltaMs)
   toWorldSpace(ctx)
   toCameraSpace(ctx)
-  const visibleCount = ctx.frameBuffers.triangleIndices.length //cullBackfaces(ctx)
+  const visibleCount = cullBackfaces(ctx)
   const sorted = sortByDepth(ctx, visibleCount)
   toScreenSpace(ctx, visibleCount, sorted, 1)
   render(ctx, visibleCount, sorted)
