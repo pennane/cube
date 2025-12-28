@@ -1,4 +1,4 @@
-import { Vec3 } from '../math'
+import { Vec3 } from '../types'
 
 const cubeVertices: Vec3[] = [
   { x: -0.25, y: -0.25, z: -0.25 },

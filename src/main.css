@@ -21,6 +21,10 @@ main {
   margin: 1rem;
 }
 
+h1 {
+  text-align: center;
+}
+
 #app {
   display: flex;
   justify-content: center;

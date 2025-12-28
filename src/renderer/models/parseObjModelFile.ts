@@ -1,4 +1,4 @@
-import { Vec3 } from '../math'
+import { Vec3 } from '../types'
 
 export const parseObjModelFile = (file: string): Vec3[][] => {
   const lines = file.split('\n').map((l) => l.trim())
