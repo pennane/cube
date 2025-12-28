@@ -29,20 +29,15 @@ const modelToBuffer = (model: Vec3[][]): Model => {
 }
 
 export const readModels = async () => {
-  const [cessna, pyramid, shuttle, teapot, trumpet] = await Promise.all(
-    [
-      '/cessna.obj',
-      '/pyramid.obj',
-      '/shuttle.obj',
-      '/teapot.obj',
-      '/trumpet.obj'
-    ].map(fetchObjModel)
+  const [cessna, shuttle, teapot, trumpet] = await Promise.all(
+    ['/cessna.obj', '/shuttle.obj', '/teapot.obj', '/trumpet.obj'].map(
+      fetchObjModel
+    )
   )
 
   return {
     cube: modelToBuffer(cubeTriangles),
     cessna: modelToBuffer(cessna),
-    pyramid: modelToBuffer(pyramid),
     shuttle: modelToBuffer(shuttle),
     teapot: modelToBuffer(teapot),
     trumpet: modelToBuffer(trumpet)
