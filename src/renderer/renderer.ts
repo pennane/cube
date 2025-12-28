@@ -152,12 +152,7 @@ const updateCamera = (ctx: Context, deltaMs: number) => {
 
 const render = (ctx: Context, visibleCount: number, indices: Uint16Array) => {
   const screen = ctx.frameBuffers.screen
-  ctx.renderingContext.clearRect(
-    0,
-    0,
-    ctx.renderingContext.canvas.width,
-    ctx.renderingContext.canvas.height
-  )
+  ctx.renderingContext.clearRect(0, 0, ctx.viewport.x, ctx.viewport.y)
   ctx.renderingContext.fillStyle = 'rgba(255, 255, 0, 1)'
   ctx.renderingContext.strokeStyle = 'red'
 

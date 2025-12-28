@@ -22,6 +22,7 @@ export type FrameBuffers = {
 
 export type Context = {
   view: Mat4
+  viewport: Vec2
   renderingContext: CanvasRenderingContext2D
   objects: Object3D[]
   frameBuffers: FrameBuffers
