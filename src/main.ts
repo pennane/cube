@@ -5,16 +5,18 @@ import { createPerformanceMonitor } from './performance'
 
 import { createRenderingContext, Matrix, nextFrame, Types } from './renderer'
 
-const CANVAS_SIZE = 500
 const CAMERA_DISTANCE = 3.5
+const CANVAS_SIZE = 500
 
 const app = document.getElementById('app')!
 const canvas = document.createElement('canvas')
-const renderingContext = canvas.getContext('2d')!
-
-canvas.width = CANVAS_SIZE
-canvas.height = CANVAS_SIZE
 app.appendChild(canvas)
+
+const dpr = window.devicePixelRatio
+const renderingContext = canvas.getContext('2d', { alpha: false })!
+
+canvas.width = CANVAS_SIZE * dpr
+canvas.height = CANVAS_SIZE * dpr
 
 const performanceMonitor = createPerformanceMonitor(app, { enabled: false })
 

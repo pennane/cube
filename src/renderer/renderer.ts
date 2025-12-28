@@ -1,4 +1,4 @@
-import { multiply, rotateXYZ, rotateY, translate } from './math'
+import { multiply, rotateXYZ, rotateY, translate } from './matrix'
 import { Context, FrameBuffers, Object3D } from './types'
 
 const toWorldSpace = (ctx: Context) => {
@@ -22,19 +22,19 @@ const toWorldSpace = (ctx: Context) => {
 
 const toCameraSpace = (ctx: Context) => {
   const world = ctx.frameBuffers.world
-  const camera = ctx.camera
+  const view = ctx.view
   for (let i = 0; i < world.length; i += 3) {
     const x = world[i]
     const y = world[i + 1]
     const z = world[i + 2]
-    const w = camera[3] * x + camera[7] * y + camera[11] * z + camera[15]
+    const w = view[3] * x + view[7] * y + view[11] * z + view[15]
 
     ctx.frameBuffers.camera[i] =
-      (camera[0] * x + camera[4] * y + camera[8] * z + camera[12]) / w
+      (view[0] * x + view[4] * y + view[8] * z + view[12]) / w
     ctx.frameBuffers.camera[i + 1] =
-      (camera[1] * x + camera[5] * y + camera[9] * z + camera[13]) / w
+      (view[1] * x + view[5] * y + view[9] * z + view[13]) / w
     ctx.frameBuffers.camera[i + 2] =
-      (camera[2] * x + camera[6] * y + camera[10] * z + camera[14]) / w
+      (view[2] * x + view[6] * y + view[10] * z + view[14]) / w
   }
 }
 
@@ -147,12 +147,17 @@ const updateAnimations = (ctx: Context, deltaMs: number) => {
 
 const updateCamera = (ctx: Context, deltaMs: number) => {
   const angle = deltaMs / 1000
-  ctx.camera = multiply(rotateY(angle), ctx.camera)
+  ctx.view = multiply(rotateY(angle), ctx.view)
 }
 
 const render = (ctx: Context, visibleCount: number, indices: Uint16Array) => {
   const screen = ctx.frameBuffers.screen
-  ctx.renderingContext.clearRect(0, 0, ctx.viewport.x, ctx.viewport.y)
+  ctx.renderingContext.clearRect(
+    0,
+    0,
+    ctx.renderingContext.canvas.width,
+    ctx.renderingContext.canvas.height
+  )
   ctx.renderingContext.fillStyle = 'rgba(255, 255, 0, 1)'
   ctx.renderingContext.strokeStyle = 'red'
 
@@ -212,7 +217,7 @@ export const createRenderingContext = ({
   cameraDistance: number
 }): Context => {
   const context: Context = {
-    camera: translate({
+    view: translate({
       x: 0,
       y: 0,
       z: -cameraDistance
